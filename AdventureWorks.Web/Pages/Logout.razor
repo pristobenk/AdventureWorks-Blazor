@@ -1,0 +1,51 @@
+@page "/logout"
+@using AdventureWorks.Web.Services
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+
+
+@code {
+    private async Task LogoutInternal()
+    {
+        if (AuthStateProvider is ApiAuthenticationStateProvider provider)
+        {
+            await provider.MarkUserAsLoggedOut();
+            
+            Navigation.NavigateTo("/", true);
+
+            return;
+        }
+
+        Navigation.NavigateTo("/", true);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Are you sure you want to logout?",
+            "Logout",
+            "Cancel",
+            "Confirm logout");
+
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        {
+            await LogoutInternal();
+        }
+        else
+        {
+            
+            try
+            {
+                await JS.InvokeVoidAsync("history.back");
+            }
+            catch
+            {
+               
+            }
+        }
+    }
+}

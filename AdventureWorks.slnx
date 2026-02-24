@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Project Path="AdventureWorks.API/AdventureWorks.API/AdventureWorks.WebApi.csproj" Id="68652478-3c42-4d06-a727-15f1d8fda02c" />
+  <Project Path="AdventureWorks.Application/AdventureWorks.Application/AdventureWorks.Application.csproj" Id="5e052bb1-846c-47e8-9d12-51d01679a078" />
+  <Project Path="AdventureWorks.Domain/AdventureWorks.Domain/AdventureWorks.Domain.csproj" Id="cb90e2b6-e9a4-4574-b634-5e6f69ca1cf5" />
+  <Project Path="AdventureWorks.Infrastructure/AdventureWorks.Infrastructure/AdventureWorks.Infrastructure.csproj" Id="5709c3a2-ad31-490d-9b12-f5ef60673add" />
+  <Project Path="AdventureWorks.SharedKernel/AdventureWorks.SharedKernel/AdventureWorks.SharedKernel.csproj" Id="4526d5dd-9c36-450e-9846-5354269fde3c" />
+  <Project Path="AdventureWorks.Web/AdventureWorks.Web.csproj" />
+</Solution>
