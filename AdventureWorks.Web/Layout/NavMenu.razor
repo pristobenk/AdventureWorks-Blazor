@@ -1,0 +1,71 @@
+﻿@using AdventureWorks.Web.Services
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<div class="navmenu">
+    <nav class="sitenav" aria-labelledby="main-menu">
+        <input id="navmenu-toggle" type="checkbox" style="display:none"/>
+        <FluentNavMenu Id="main-menu" Width="250" Collapsible="true" Title="Navigation menu" @bind-Expanded="expanded" CustomToggle="true">
+             
+             <AuthorizeView>
+                <Authorized>
+                    <FluentNavLink Href="/home" Match="NavLinkMatch.All" Icon="@(new Icons.Regular.Size20.Home())" IconColor="Color.Accent">Home</FluentNavLink>
+                    <FluentNavLink Href="counter" Icon="@(new Icons.Regular.Size20.NumberSymbolSquare())" IconColor="Color.Accent">Counter</FluentNavLink>
+                    <FluentNavLink Href="weather" Icon="@(new Icons.Regular.Size20.WeatherPartlyCloudyDay())" IconColor="Color.Accent">Weather</FluentNavLink>
+                    <FluentNavLink Href="javascript:void(0)"
+                                   Icon="@(new Icons.Regular.Size20.SignOut())"
+                                   IconColor="Color.Accent"
+                                   OnClick="ConfirmLogout">
+                        Logout
+                    </FluentNavLink>
+                </Authorized>
+             </AuthorizeView>
+
+        </FluentNavMenu>
+    </nav>
+</div>
+
+@code {
+    [Parameter]
+    public bool Expanded { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<bool> ExpandedChanged { get; set; }
+
+    private bool expanded
+    {
+        get => Expanded;
+        set
+        {
+            if (Expanded != value)
+            {
+                Expanded = value;
+                ExpandedChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    private async Task ConfirmLogout()
+    {
+        var dialog = await DialogService.ShowConfirmationAsync(
+            "Are you sure you want to logout?",
+            "Logout",
+            "Cancel",
+            "Confirm logout");
+
+        var result = await dialog.Result;
+        if (!result.Cancelled)
+        {
+            if (AuthStateProvider is ApiAuthenticationStateProvider provider)
+            {
+                await provider.MarkUserAsLoggedOut();
+                Navigation.NavigateTo("/", true);
+            }
+            else
+            {
+                Navigation.NavigateTo("/", true);
+            }
+        }
+    }
+}

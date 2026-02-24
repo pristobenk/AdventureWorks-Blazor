@@ -1,0 +1,15 @@
+﻿using AdventureWorks.Domain.Users;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace AdventureWorks.Infrastructure.EntityConfigurations.Users;
+
+internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.HasKey(u => u.Id);
+
+        builder.HasIndex(u => u.Email).IsUnique();
+    }
+}

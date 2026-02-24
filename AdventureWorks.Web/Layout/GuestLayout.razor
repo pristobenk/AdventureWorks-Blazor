@@ -1,0 +1,25 @@
+﻿@inherits LayoutComponentBase
+
+<FluentLayout>
+    <FluentHeader>
+       AdventureWorks
+    </FluentHeader>
+    <FluentStack Class="main" Orientation="Orientation.Horizontal" Width="100%">
+        
+        <FluentBodyContent Class="body-content">
+            <ErrorBoundary>
+                <ChildContent>
+                    <div class="content">
+                        @Body
+                    </div>
+                </ChildContent>
+                
+            </ErrorBoundary>
+        </FluentBodyContent>
+    </FluentStack>
+    <FluentFooter>
+        
+        <FluentSpacer />
+        <a href="https://learn.microsoft.com/en-us/aspnet/core/blazor" target="_blank">About Blazor</a>
+    </FluentFooter>
+</FluentLayout>

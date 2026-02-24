@@ -1,0 +1,18 @@
+﻿@page "/home"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Home</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <h1>Welcome back!</h1>
+        <p>You are authenticated.</p>
+    </Authorized>
+    <NotAuthorized>
+        <h1>Not authorized</h1>
+        <p>Please <a href="/login">sign in</a> to continue.</p>
+    </NotAuthorized>
+</AuthorizeView>
