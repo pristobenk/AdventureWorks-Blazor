@@ -42,6 +42,8 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
+app.UseCors();
+
 app.MapEndpoints();
 
 if (app.Environment.IsDevelopment())

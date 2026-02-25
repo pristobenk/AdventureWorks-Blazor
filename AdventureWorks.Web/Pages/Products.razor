@@ -1,0 +1,108 @@
+﻿@page "/products"
+
+@using System.Net.Http.Headers
+@using System.Threading
+@using AdventureWorks.Web.Models
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ILogger<Products> Logger
+@inject HttpClient Http
+
+<FluentLayout>
+
+    <FluentToolbar class="toolbar-fixed">
+        <h3>Products</h3>
+        <FluentButton Appearance="Appearance.Neutral" IconStart="@(new Icons.Regular.Size16.Add())">Add</FluentButton>
+        <FluentButton Appearance="Appearance.Neutral" IconStart="@(new Icons.Regular.Size16.ArrowExport())">Export</FluentButton>
+        <FluentButton Appearance="Appearance.Neutral">Import</FluentButton>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <FluentSearch Placeholder="Search by name..."
+                          @bind-Value="searchTerm"
+                          @bind-Value:after="RefreshAsync"
+                          Style="width: 250px;" />
+        </div>
+    </FluentToolbar>
+
+     <div id="productsGrid" class="grid-wrapper">
+        <FluentDataGrid @ref="grid"
+                        ItemsProvider="@(new GridItemsProvider<ProductDto>(LoadProducts))"
+                        Pagination="@pagination"
+                        TItem="ProductDto"
+                        ResizableColumns="true"
+                        Style="width: 100%;">
+            <PropertyColumn Property="@(p => p.ProductId)" Title="ID" />
+            <PropertyColumn Property="@(p => p.Name)" Title="Name" />
+            <PropertyColumn Property="@(p => p.ProductNumber)" Title="Product #" />
+            <TemplateColumn Title="List Price">
+                <span>@context.ListPrice.ToString("C")</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Modified">
+                <FluentBadge Appearance="Appearance.Neutral">
+                    @context.ModifiedDate.ToString("yyyy-MM-dd")
+                </FluentBadge>
+            </TemplateColumn>
+        </FluentDataGrid>
+        
+        <div class="pagination pagination-fixed">
+            <FluentPaginator State="@pagination" />
+        </div>
+       
+     </div>
+
+</FluentLayout>
+
+
+
+
+@code {
+    private FluentDataGrid<ProductDto> grid = default!;
+    private PaginationState pagination = new() { ItemsPerPage = 25 };
+    private string searchTerm = string.Empty;
+    private const string ApiBaseUrl = "https://localhost:60241/";
+
+    private async ValueTask<GridItemsProviderResult<ProductDto>> LoadProducts(GridItemsProviderRequest<ProductDto> req)
+    {
+        try 
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User?.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login", true);
+                return GridItemsProviderResult.From(new List<ProductDto>(), 0);
+            }
+
+            var pageSize = pagination.ItemsPerPage == 0 ? 25 : pagination.ItemsPerPage ; 
+            var currentPage = (req.StartIndex / pageSize) + 1;
+            
+            var url = $"{ApiBaseUrl}products?page={currentPage}&pageSize={pageSize}";
+            
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                url += $"&searchTerm={Uri.EscapeDataString(searchTerm)}";
+            }
+
+            var response = await Http.GetFromJsonAsync<PagedResponse<ProductDto>>(url, req.CancellationToken);
+
+            if (response is null)
+            {
+                return GridItemsProviderResult.From(new List<ProductDto>(), 0);
+            }
+
+            return GridItemsProviderResult.From(response.Items, response.TotalCount);
+        }
+        catch (OperationCanceledException)
+        {
+             return GridItemsProviderResult.From(new List<ProductDto>(), 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to fetch products from {Url}", $"{ApiBaseUrl}products");
+            return GridItemsProviderResult.From(new List<ProductDto>(), 0);
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        await grid.RefreshDataAsync();
+    }
+}

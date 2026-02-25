@@ -1,16 +1,33 @@
 ﻿using AdventureWorks.Application.Abstractions.Data;
 using AdventureWorks.Application.Abstractions.Messaging;
+using AdventureWorks.Application.Pagination;
 using AdventureWorks.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace AdventureWorks.Application.Products.Get;
 
 internal sealed class GetProductsQueryHandler(IApplicationDbContext context)
-    : IQueryHandler<GetProductsQuery, List<GetProductsResponse>>
+    : IQueryHandler<GetProductsQuery, PagedList<GetProductsResponse>>
 {
-    public async Task<Result<List<GetProductsResponse>>> Handle(GetProductsQuery query, CancellationToken cancellationToken)
+    public async Task<Result<PagedList<GetProductsResponse>>> Handle(GetProductsQuery query, CancellationToken cancellationToken)
     {
-        List<GetProductsResponse> products = await context.Products
+        // sanitize paging parameters
+        var page = Math.Max(1, query.Page);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
+        var productsQuery = context.Products.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.SearchTerm))
+        {
+            productsQuery = productsQuery.Where(p => p.Name.Contains(query.SearchTerm));
+        }
+
+        var totalCount = await productsQuery.CountAsync(cancellationToken);
+
+        List<GetProductsResponse> products = await productsQuery
+            .OrderBy(p => p.ProductId)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(p => new GetProductsResponse
             {
                 ProductId = p.ProductId,
@@ -39,7 +56,7 @@ internal sealed class GetProductsQueryHandler(IApplicationDbContext context)
             })
             .ToListAsync(cancellationToken);
 
-        return products;
+        return new PagedList<GetProductsResponse>(products, totalCount, page, pageSize);
     }
 }
 

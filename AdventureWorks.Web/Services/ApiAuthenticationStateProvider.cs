@@ -25,7 +25,8 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
     {
         try
         {
-            var token = await _js.InvokeAsync<string>("localStorage.getItem", TokenKey);
+            var storedToken = await _js.InvokeAsync<string>("localStorage.getItem", TokenKey);
+            var token = NormalizeToken(storedToken);
             if (string.IsNullOrWhiteSpace(token))
             {
                 return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
@@ -47,6 +48,13 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
 
     public async Task MarkUserAsAuthenticated(string token)
     {
+        token = NormalizeToken(token) ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            await MarkUserAsLoggedOut();
+            return;
+        }
+
         await _js.InvokeVoidAsync("localStorage.setItem", TokenKey, token);
 
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -64,6 +72,8 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
         {
             // ignore navigation errors in provider
         }
+
+        // end MarkUserAsAuthenticated
     }
 
     public async Task MarkUserAsLoggedOut()
@@ -110,5 +120,26 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
         }
 
         return Convert.FromBase64String(base64);
+    }
+
+    private static string? NormalizeToken(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        token = token.Trim();
+
+        // Some APIs return the token as a quoted string or with a Bearer prefix.
+        token = token.Trim('"');
+
+        const string bearerPrefix = "Bearer ";
+        if (token.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            token = token[bearerPrefix.Length..].Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(token) ? null : token;
     }
 }

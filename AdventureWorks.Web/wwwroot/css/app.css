@@ -210,3 +210,20 @@ code {
         right: unset;
     }
 }
+
+.toolbar-fixed {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--neutral-layer-1, #fff);
+    padding: 8px 0;
+}
+
+.pagination-fixed {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    background: var(--neutral-layer-1, #fff);
+    padding: 8px 0;
+    border-top: 1px solid var(--neutral-stroke-layer-rest, #e5e5e5);
+}
