@@ -8,7 +8,7 @@
 @inject ILogger<Products> Logger
 @inject HttpClient Http
 
-<FluentLayout>
+<FluentLayout Style="height: 100%; display: flex; flex-direction: column;">
 
     <FluentToolbar class="toolbar-fixed">
         <h3>Products</h3>
@@ -23,7 +23,7 @@
         </div>
     </FluentToolbar>
 
-     <div id="productsGrid" class="grid-wrapper">
+    <div id="productsGrid" class="grid-wrapper grid-sticky-header" style="height: calc(100vh - 160px); overflow-y: auto;">
         <FluentDataGrid @ref="grid"
                         ItemsProvider="@(new GridItemsProvider<ProductDto>(LoadProducts))"
                         Pagination="@pagination"
@@ -42,18 +42,13 @@
                 </FluentBadge>
             </TemplateColumn>
         </FluentDataGrid>
-        
-        <div class="pagination pagination-fixed">
-            <FluentPaginator State="@pagination" />
-        </div>
-       
-     </div>
+    </div>
+
+    <div class="pagination pagination-fixed">
+        <FluentPaginator State="@pagination" />
+    </div>
 
 </FluentLayout>
-
-
-
-
 @code {
     private FluentDataGrid<ProductDto> grid = default!;
     private PaginationState pagination = new() { ItemsPerPage = 25 };

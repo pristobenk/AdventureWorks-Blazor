@@ -21,6 +21,45 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
         _navigation = navigation;
     }
 
+    private static bool IsTokenExpired(string token)
+    {
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length < 2) return false;
+
+            var payload = parts[1];
+            var jsonBytes = ParseBase64WithoutPadding(payload);
+            using var doc = JsonDocument.Parse(jsonBytes);
+
+            if (doc.RootElement.TryGetProperty("exp", out var expEl))
+            {
+                long seconds;
+                if (expEl.ValueKind == JsonValueKind.Number && expEl.TryGetInt64(out seconds))
+                {
+                    // ok
+                }
+                else if (expEl.ValueKind == JsonValueKind.String && long.TryParse(expEl.GetString(), out seconds))
+                {
+                    // ok
+                }
+                else
+                {
+                    return false;
+                }
+
+                var expiry = DateTimeOffset.FromUnixTimeSeconds(seconds);
+                return expiry <= DateTimeOffset.UtcNow;
+            }
+        }
+        catch
+        {
+            // if parsing fails, assume not expired to avoid logging out unexpectedly
+        }
+
+        return false;
+    }
+
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         try
@@ -29,6 +68,14 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
             var token = NormalizeToken(storedToken);
             if (string.IsNullOrWhiteSpace(token))
             {
+                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+            }
+
+            // If token is expired, clear it and return anonymous principal
+            if (IsTokenExpired(token))
+            {
+                await _js.InvokeVoidAsync("localStorage.removeItem", TokenKey);
+                _http.DefaultRequestHeaders.Authorization = null;
                 return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
             }
 
@@ -50,6 +97,13 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
     {
         token = NormalizeToken(token) ?? string.Empty;
         if (string.IsNullOrWhiteSpace(token))
+        {
+            await MarkUserAsLoggedOut();
+            return;
+        }
+
+        // If incoming token is already expired, do not persist it
+        if (IsTokenExpired(token))
         {
             await MarkUserAsLoggedOut();
             return;
