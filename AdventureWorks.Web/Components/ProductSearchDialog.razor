@@ -1,0 +1,107 @@
+@using AdventureWorks.Web.Models
+@inject HttpClient Http
+@inject ILogger<ProductSearchDialog> Logger
+@implements IDialogContentComponent<ProductDto?>
+
+<FluentDialogHeader ShowDismiss="true">
+    <FluentStack VerticalAlignment="VerticalAlignment.Center">
+        <FluentIcon Value="@(new Icons.Regular.Size24.BoxSearch())" />
+        <FluentLabel Typo="Typography.PaneHeader">Search Product</FluentLabel>
+    </FluentStack>
+</FluentDialogHeader>
+
+<FluentDialogBody>
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+        <FluentSearch Placeholder="Type product name or number..."
+                      @bind-Value="searchTerm"
+                      @bind-Value:after="SearchAsync"
+                      Style="width: 100%;" />
+
+        @if (isLoading)
+        {
+            <FluentProgress />
+        }
+        else if (products.Count == 0 && hasSearched)
+        {
+            <FluentLabel>No products found.</FluentLabel>
+        }
+        else
+        {
+            <div style="max-height: 400px; overflow-y: auto; width: 100%;">
+                <FluentDataGrid Items="@products.AsQueryable()" TItem="ProductDto" Style="width: 100%;">
+                    <PropertyColumn Property="@(p => p.ProductId)" Title="ID" Width="60px" />
+                    <PropertyColumn Property="@(p => p.Name)" Title="Product Name" />
+                    <PropertyColumn Property="@(p => p.ProductNumber)" Title="Product #" />
+                    <TemplateColumn Title="Price" Align="Align.End">
+                        <span>@context.ListPrice.ToString("N2")</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="" Width="80px">
+                        <FluentButton Appearance="Appearance.Accent"
+                                      Size="ButtonSize.Small"
+                                      @onclick="() => SelectProduct(context)">
+                            Select
+                        </FluentButton>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            </div>
+        }
+    </FluentStack>
+</FluentDialogBody>
+
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Neutral" @onclick="CancelAsync">Cancel</FluentButton>
+</FluentDialogFooter>
+
+@code {
+    private const string ApiBaseUrl = "https://localhost:60241/";
+
+    [Parameter]
+    public ProductDto? Content { get; set; }
+
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    private string searchTerm = string.Empty;
+    private List<ProductDto> products = new();
+    private bool isLoading;
+    private bool hasSearched;
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            products.Clear();
+            hasSearched = false;
+            return;
+        }
+
+        isLoading = true;
+        hasSearched = true;
+
+        try
+        {
+            var url = $"{ApiBaseUrl}products?page=1&pageSize=20&searchTerm={Uri.EscapeDataString(searchTerm)}";
+            var response = await Http.GetFromJsonAsync<PagedResponse<ProductDto>>(url);
+            products = response?.Items ?? new();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to search products");
+            products.Clear();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SelectProduct(ProductDto product)
+    {
+        await Dialog.CloseAsync(product);
+    }
+
+    private async Task CancelAsync()
+    {
+        await Dialog.CancelAsync();
+    }
+}

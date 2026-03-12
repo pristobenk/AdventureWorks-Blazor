@@ -4,6 +4,7 @@ using AdventureWorks.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AdventureWorks.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260312025730_AddCustomers")]
+    partial class AddCustomers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -55,57 +58,6 @@ namespace AdventureWorks.Infrastructure.Migrations
                     b.HasKey("CustomerId");
 
                     b.ToTable("Customers", "dbo");
-                });
-
-            modelBuilder.Entity("AdventureWorks.Domain.Orders.Order", b =>
-                {
-                    b.Property<int>("OrderId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderId"));
-
-                    b.Property<int>("CustomerId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("OrderDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("OrderId");
-
-                    b.HasIndex("CustomerId");
-
-                    b.ToTable("Orders", "dbo");
-                });
-
-            modelBuilder.Entity("AdventureWorks.Domain.Orders.OrderLine", b =>
-                {
-                    b.Property<int>("OrderLineId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderLineId"));
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("OrderLineId");
-
-                    b.HasIndex("OrderId");
-
-                    b.ToTable("OrderLines", "dbo");
                 });
 
             modelBuilder.Entity("AdventureWorks.Domain.Products.Product", b =>
@@ -264,28 +216,6 @@ namespace AdventureWorks.Infrastructure.Migrations
                     b.ToTable("Users", "dbo");
                 });
 
-            modelBuilder.Entity("AdventureWorks.Domain.Orders.Order", b =>
-                {
-                    b.HasOne("AdventureWorks.Domain.Customers.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Customer");
-                });
-
-            modelBuilder.Entity("AdventureWorks.Domain.Orders.OrderLine", b =>
-                {
-                    b.HasOne("AdventureWorks.Domain.Orders.Order", "Order")
-                        .WithMany("OrderLines")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Order");
-                });
-
             modelBuilder.Entity("AdventureWorks.Domain.Todos.TodoItem", b =>
                 {
                     b.HasOne("AdventureWorks.Domain.Users.User", null)
@@ -293,11 +223,6 @@ namespace AdventureWorks.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("AdventureWorks.Domain.Orders.Order", b =>
-                {
-                    b.Navigation("OrderLines");
                 });
 #pragma warning restore 612, 618
         }

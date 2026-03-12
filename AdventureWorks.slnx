@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path="create-domain.MD" />
+    <File Path="create-ui.MD" />
   </Folder>
   <Project Path="AdventureWorks.API/AdventureWorks.API/AdventureWorks.WebApi.csproj" Id="68652478-3c42-4d06-a727-15f1d8fda02c" />
   <Project Path="AdventureWorks.Application/AdventureWorks.Application/AdventureWorks.Application.csproj" Id="5e052bb1-846c-47e8-9d12-51d01679a078" />

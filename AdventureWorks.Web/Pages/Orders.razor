@@ -1,0 +1,166 @@
+@page "/orders"
+
+@using AdventureWorks.Web.Models
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ILogger<Orders> Logger
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<FluentLayout Style="height: 100%; display: flex; flex-direction: column;">
+
+    <FluentToolbar class="toolbar-fixed">
+        <h3>Orders</h3>
+        <FluentButton Appearance="Appearance.Accent"
+                      IconStart="@(new Icons.Regular.Size16.Add())"
+                      @onclick="NavigateToCreate">
+            Create Order
+        </FluentButton>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto;">
+            <FluentSearch Placeholder="Search by customer name..."
+                          @bind-Value="searchTerm"
+                          @bind-Value:after="RefreshAsync"
+                          Style="width: 280px;" />
+        </div>
+    </FluentToolbar>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <FluentMessageBar Intent="@messageIntent" Style="margin-bottom: 8px;">
+            @message
+        </FluentMessageBar>
+    }
+
+    <div id="ordersGrid" class="grid-wrapper grid-sticky-header" style="height: calc(100vh - 200px); overflow-y: auto;">
+        <FluentDataGrid @ref="grid"
+                        ItemsProvider="@(new GridItemsProvider<GetOrdersResponse>(LoadOrders))"
+                        Pagination="@pagination"
+                        TItem="GetOrdersResponse"
+                        ResizableColumns="true"
+                        Style="width: 100%;">
+            <PropertyColumn Property="@(c => c.OrderId)" Title="ID" />
+            <PropertyColumn Property="@(c => c.CustomerName)" Title="Customer" />
+            <TemplateColumn Title="Order Date">
+                <span>@context.OrderDate.ToLocalTime().ToString("g")</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Total Amount" Align="Align.End">
+                <span>@context.TotalAmount.ToString("N2")</span>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Align="Align.End">
+                <div style="display:flex; gap:6px; justify-content:flex-end;">
+                    <FluentButton Appearance="Appearance.Neutral" @onclick="() => ViewDetails(context.OrderId)">
+                        View
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Stealth" @onclick="() => DeleteAsync(context.OrderId)">
+                        Delete
+                    </FluentButton>
+                </div>
+            </TemplateColumn>
+        </FluentDataGrid>
+    </div>
+
+    <div class="pagination pagination-fixed">
+        <FluentPaginator State="@pagination" />
+    </div>
+
+</FluentLayout>
+
+@code {
+    private const string ApiBaseUrl = "https://localhost:60241/";
+
+    private FluentDataGrid<GetOrdersResponse> grid = default!;
+    private PaginationState pagination = new() { ItemsPerPage = 25 };
+    private string searchTerm = string.Empty;
+
+    private string? message;
+    private MessageIntent messageIntent = MessageIntent.Info;
+
+    private async ValueTask<GridItemsProviderResult<GetOrdersResponse>> LoadOrders(GridItemsProviderRequest<GetOrdersResponse> req)
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User?.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login", true);
+                return GridItemsProviderResult.From(new List<GetOrdersResponse>(), 0);
+            }
+
+            var pageSize = pagination.ItemsPerPage == 0 ? 25 : pagination.ItemsPerPage;
+            var currentPage = (req.StartIndex / pageSize) + 1;
+
+            var url = $"{ApiBaseUrl}orders?page={currentPage}&pageSize={pageSize}";
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                url += $"&searchTerm={Uri.EscapeDataString(searchTerm)}";
+            }
+
+            var response = await Http.GetFromJsonAsync<PagedResponse<GetOrdersResponse>>(url, req.CancellationToken);
+            if (response is null)
+            {
+                return GridItemsProviderResult.From(new List<GetOrdersResponse>(), 0);
+            }
+
+            return GridItemsProviderResult.From(response.Items, response.TotalCount);
+        }
+        catch (OperationCanceledException)
+        {
+            return GridItemsProviderResult.From(new List<GetOrdersResponse>(), 0);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to fetch orders from {Url}", $"{ApiBaseUrl}orders");
+            ShowMessage("Failed to load order data.", MessageIntent.Error);
+            return GridItemsProviderResult.From(new List<GetOrdersResponse>(), 0);
+        }
+    }
+
+    private void NavigateToCreate()
+    {
+        Navigation.NavigateTo("/orders/create");
+    }
+
+    private async Task DeleteAsync(int orderId)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm", $"Delete order '{orderId}'?");
+        if (!confirm)
+        {
+            return;
+        }
+
+        try
+        {
+            var response = await Http.DeleteAsync($"{ApiBaseUrl}orders/{orderId}");
+            if (response.IsSuccessStatusCode)
+            {
+                ShowMessage("Order deleted successfully.", MessageIntent.Success);
+                await RefreshAsync();
+                return;
+            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            ShowMessage($"Failed to delete order. {error}", MessageIntent.Error);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to delete order {OrderId}", orderId);
+            ShowMessage("Unexpected error while deleting order.", MessageIntent.Error);
+        }
+    }
+
+    private void ViewDetails(int orderId)
+    {
+        Navigation.NavigateTo($"/orders/{orderId}");
+    }
+
+    private async Task RefreshAsync()
+    {
+        await grid.RefreshDataAsync();
+    }
+
+    private void ShowMessage(string text, MessageIntent intent)
+    {
+        message = text;
+        messageIntent = intent;
+    }
+}

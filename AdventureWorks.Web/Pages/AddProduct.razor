@@ -1,0 +1,234 @@
+@page "/products/add"
+@using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+@code {
+    private CreateModel Model { get; set; } = new();
+    private string? Message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (state.User?.Identity?.IsAuthenticated != true)
+            {
+                Navigation.NavigateTo("/login", true);
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/products");
+    }
+
+    private async Task HandleCreate()
+    {
+        Message = null;
+        try
+        {
+            var request = new
+            {
+                Name = Model.Name,
+                ProductNumber = Model.ProductNumber,
+                MakeFlag = Model.MakeFlag,
+                FinishedGoodsFlag = Model.FinishedGoodsFlag,
+                Color = Model.Color,
+                SafetyStockLevel = short.TryParse(Model.SafetyStockLevel, out var s1) ? s1 : (short)0,
+                ReorderPoint = short.TryParse(Model.ReorderPoint, out var s2) ? s2 : (short)0,
+                StandardCost = decimal.TryParse(Model.StandardCost, out var d1) ? d1 : 0m,
+                ListPrice = decimal.TryParse(Model.ListPrice, out var d2) ? d2 : 0m,
+                Size = Model.Size,
+                SizeUnitMeasureCode = Model.SizeUnitMeasureCode,
+                WeightUnitMeasureCode = Model.WeightUnitMeasureCode,
+                Weight = decimal.TryParse(Model.Weight, out var d3) ? d3 : (decimal?)null,
+                DaysToManufacture = int.TryParse(Model.DaysToManufacture, out var i1) ? i1 : 0,
+                ProductLine = Model.ProductLine,
+                Class = Model.Class,
+                Style = Model.Style,
+                SellStartDate = ParseDateOrDefault(Model.SellStartDateString),
+                SellEndDate = ParseNullableDate(Model.SellEndDateString),
+                DiscontinuedDate = ParseNullableDate(Model.DiscontinuedDateString)
+            };
+
+            var resp = await Http.PostAsJsonAsync("https://localhost:60241/products", request);
+            if (resp.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/products");
+            }
+            else
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Message = $"Failed to create product: {err}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+        }
+    }
+
+    private async Task HandleUpdate()
+    {
+        Message = null;
+        try
+        {
+            if (Model.Id == null)
+            {
+                Message = "Cannot update: no product id.";
+                return;
+            }
+
+            var request = new
+            {
+                Name = Model.Name,
+                ProductNumber = Model.ProductNumber,
+                MakeFlag = Model.MakeFlag,
+                FinishedGoodsFlag = Model.FinishedGoodsFlag,
+                Color = Model.Color,
+                SafetyStockLevel = short.TryParse(Model.SafetyStockLevel, out var s1) ? s1 : (short)0,
+                ReorderPoint = short.TryParse(Model.ReorderPoint, out var s2) ? s2 : (short)0,
+                StandardCost = decimal.TryParse(Model.StandardCost, out var d1) ? d1 : 0m,
+                ListPrice = decimal.TryParse(Model.ListPrice, out var d2) ? d2 : 0m,
+                Size = Model.Size,
+                SizeUnitMeasureCode = Model.SizeUnitMeasureCode,
+                WeightUnitMeasureCode = Model.WeightUnitMeasureCode,
+                Weight = decimal.TryParse(Model.Weight, out var d3) ? d3 : (decimal?)null,
+                DaysToManufacture = int.TryParse(Model.DaysToManufacture, out var i1) ? i1 : 0,
+                ProductLine = Model.ProductLine,
+                Class = Model.Class,
+                Style = Model.Style,
+                SellStartDate = ParseDateOrDefault(Model.SellStartDateString),
+                SellEndDate = ParseNullableDate(Model.SellEndDateString),
+                DiscontinuedDate = ParseNullableDate(Model.DiscontinuedDateString)
+            };
+
+            var resp = await Http.PutAsJsonAsync($"https://localhost:60241/products/{Model.Id}", request);
+            if (resp.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/products");
+            }
+            else
+            {
+                var err = await resp.Content.ReadAsStringAsync();
+                Message = $"Failed to update product: {err}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+        }
+    }
+
+    private static DateTime ParseDateOrDefault(string? s)
+    {
+        if (DateTime.TryParse(s, out var dt)) return dt;
+        return DateTime.UtcNow;
+    }
+
+    private static DateTime? ParseNullableDate(string? s)
+    {
+        if (DateTime.TryParse(s, out var dt)) return dt;
+        return null;
+    }
+
+    private async Task OnUpdateClicked()
+    {
+        await HandleUpdate();
+    }
+
+    private class CreateModel
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public string ProductNumber { get; set; } = string.Empty;
+
+        public bool MakeFlag { get; set; }
+        public bool FinishedGoodsFlag { get; set; }
+        public string? Color { get; set; }
+        public string SafetyStockLevel { get; set; } = "0";
+        public string ReorderPoint { get; set; } = "0";
+        public string StandardCost { get; set; } = "0";
+        public string ListPrice { get; set; } = "0";
+        public string? Size { get; set; }
+        public string? SizeUnitMeasureCode { get; set; }
+        public string? WeightUnitMeasureCode { get; set; }
+        public string? Weight { get; set; }
+        public string DaysToManufacture { get; set; } = "0";
+        public string? ProductLine { get; set; }
+        public string? Class { get; set; }
+        public string? Style { get; set; }
+        public string? SellStartDateString { get; set; }
+        public string? SellEndDateString { get; set; }
+        public string? DiscontinuedDateString { get; set; }
+        public int? Id { get; set; }
+    }
+}
+
+<PageTitle>Add product</PageTitle>
+
+<FluentLayout>
+    <FluentToolbar class="toolbar-fixed">
+        <h3 style="margin:0">Add / Edit product</h3>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+            <FluentButton Appearance="Appearance.Accent" @onclick="HandleCreate">Simpan</FluentButton>
+            <FluentButton Appearance="Appearance.Neutral" @onclick="OnUpdateClicked" Disabled="@(Model.Id == null)">Update</FluentButton>
+            <FluentButton Appearance="Appearance.Neutral" @onclick="Cancel">Batal</FluentButton>
+        </div>
+    </FluentToolbar>
+
+    <div class="content" style="padding:16px;">
+        <FluentCard Style="width:100%;">
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <FluentMessageBar Intent="MessageIntent.Error" Style="margin-bottom: 1rem;">@Message</FluentMessageBar>
+            }
+            
+            <EditForm Model="Model" OnValidSubmit="HandleCreate">
+                <DataAnnotationsValidator />
+                <FluentValidationSummary />
+
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+                    <FluentTextField @bind-Value="Model.Name" Label="Name" Placeholder="Product name" Style="width:100%" />
+
+                    <FluentTextField @bind-Value="Model.ProductNumber" Label="Product number" Placeholder="e.g. AR-1234" Style="width:100%" />
+
+                    <FluentCheckbox @bind-Checked="Model.MakeFlag">MakeFlag</FluentCheckbox>
+                    <FluentCheckbox @bind-Checked="Model.FinishedGoodsFlag">FinishedGoods</FluentCheckbox>
+
+                    <FluentTextField @bind-Value="Model.Color" Label="Color" Style="width:100%" />
+
+                    <FluentTextField @bind-Value="Model.SafetyStockLevel" Label="Safety stock" TextFieldType="TextFieldType.Number" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.ReorderPoint" Label="Reorder point" TextFieldType="TextFieldType.Number" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.StandardCost" Label="Standard cost" TextFieldType="TextFieldType.Number" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.ListPrice" Label="List price" TextFieldType="TextFieldType.Number" Style="width:100%" />
+
+                    <FluentTextField @bind-Value="Model.Size" Label="Size" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.SizeUnitMeasureCode" Label="Size unit" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.WeightUnitMeasureCode" Label="Weight unit" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.Weight" Label="Weight" TextFieldType="TextFieldType.Number" Style="width:100%" />
+
+                    <FluentTextField @bind-Value="Model.DaysToManufacture" Label="Days to manufacture" TextFieldType="TextFieldType.Number" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.ProductLine" Label="Product line" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.Class" Label="Class" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.Style" Label="Style" Style="width:100%" />
+
+                    <FluentTextField @bind-Value="Model.SellStartDateString" Label="Sell start" Placeholder="YYYY-MM-DD" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.SellEndDateString" Label="Sell end" Placeholder="YYYY-MM-DD" Style="width:100%" />
+                    <FluentTextField @bind-Value="Model.DiscontinuedDateString" Label="Discontinued" Placeholder="YYYY-MM-DD" Style="width:100%" />
+
+                </FluentStack>
+            </EditForm>
+        </FluentCard>
+    </div>
+</FluentLayout>

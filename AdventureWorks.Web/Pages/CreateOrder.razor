@@ -1,0 +1,286 @@
+@page "/orders/create"
+
+@using AdventureWorks.Web.Models
+@using AdventureWorks.Web.Components
+@inject HttpClient Http
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ILogger<CreateOrder> Logger
+
+<FluentLayout Style="height: 100%; display: flex; flex-direction: column;">
+
+    <FluentToolbar class="toolbar-fixed">
+        <h3>Create Order</h3>
+    </FluentToolbar>
+
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <FluentMessageBar Intent="@messageIntent" Style="margin-bottom: 8px;">
+            @message
+        </FluentMessageBar>
+    }
+
+    <div style="display: flex; flex-direction: column; flex: 1; min-height: 0; gap: 12px;">
+        @* ====== TOP SECTION: Customer Information ====== *@
+        <FluentCard Style="padding: 16px; flex: 0 0 30%; overflow-y: auto; min-height: 0;">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                <FluentLabel Typo="Typography.Subject" Style="min-width: 160px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.People())" Style="margin-right: 6px;" />
+                    Customer Information
+                </FluentLabel>
+                <FluentButton Appearance="Appearance.Accent"
+                              IconStart="@(new Icons.Regular.Size16.Search())"
+                              @onclick="OpenCustomerSearchAsync">
+                    Search Customer
+                </FluentButton>
+            </FluentStack>
+
+            <FluentDivider Style="margin: 12px 0;" />
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="24" Wrap="true">
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">Customer ID</FluentLabel>
+                    <FluentLabel Typo="Typography.Body"><strong>@(selectedCustomer?.CustomerId.ToString() ?? string.Empty)</strong></FluentLabel>
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">Customer Name</FluentLabel>
+                    <FluentLabel Typo="Typography.Body"><strong>@(selectedCustomer?.CustomerName ?? string.Empty)</strong></FluentLabel>
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">Contact</FluentLabel>
+                    <FluentLabel Typo="Typography.Body">@(selectedCustomer?.ContactName ?? string.Empty)</FluentLabel>
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">Phone</FluentLabel>
+                    <FluentLabel Typo="Typography.Body">@(selectedCustomer?.PhoneNumber ?? string.Empty)</FluentLabel>
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">Email</FluentLabel>
+                    <FluentLabel Typo="Typography.Body">@(selectedCustomer?.Email ?? string.Empty)</FluentLabel>
+                </FluentStack>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentLabel Typo="Typography.Body" Style="color: var(--neutral-foreground-hint);">Address</FluentLabel>
+                    <FluentLabel Typo="Typography.Body">@(selectedCustomer?.Address ?? string.Empty)</FluentLabel>
+                </FluentStack>
+            </FluentStack>
+        </FluentCard>
+
+        @* ====== BOTTOM SECTION: Order Lines (Products) ====== *@
+        <FluentCard Style="padding: 16px; flex: 1 1 70%; display: flex; flex-direction: column; min-height: 0;">
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12" VerticalAlignment="VerticalAlignment.Center" Wrap="true">
+                <FluentLabel Typo="Typography.Subject" Style="min-width: 160px;">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.BoxMultiple())" Style="margin-right: 6px;" />
+                    Order Lines
+                </FluentLabel>
+                <FluentButton Appearance="Appearance.Accent"
+                              IconStart="@(new Icons.Regular.Size16.Add())"
+                              @onclick="OpenProductSearchAsync">
+                    Add Product
+                </FluentButton>
+            </FluentStack>
+
+            <FluentDivider Style="margin: 12px 0;" />
+
+            <div style="flex: 1; overflow-y: auto;">
+                <FluentDataGrid Items="@orderLines.AsQueryable()" TItem="OrderLineFormModel" Style="width: 100%;">
+                    <PropertyColumn Property="@(l => l.ProductId)" Title="Product ID" Width="100px" />
+                    <PropertyColumn Property="@(l => l.ProductNumber)" Title="Product #" />
+                    <PropertyColumn Property="@(l => l.ProductName)" Title="Product Name" />
+                    <TemplateColumn Title="Unit Price" Align="Align.End" Width="130px">
+                        <span>@context.UnitPrice.ToString("N2")</span>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Quantity" Width="130px">
+                        <FluentNumberField TValue="int"
+                                           Value="@context.Quantity"
+                                           Min="1"
+                                           ValueChanged="@(val => OnQuantityChanged(context, val))"
+                                           Style="width: 90px;" />
+                    </TemplateColumn>
+                    <TemplateColumn Title="Line Total" Align="Align.End" Width="130px">
+                        <strong>@context.LineTotal.ToString("N2")</strong>
+                    </TemplateColumn>
+                    <TemplateColumn Title="" Width="80px" Align="Align.Center">
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      IconStart="@(new Icons.Regular.Size16.Delete())"
+                                      @onclick="() => RemoveOrderLine(context)" />
+                    </TemplateColumn>
+                </FluentDataGrid>
+            </div>
+
+            <FluentDivider Style="margin: 12px 0;" />
+
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.End" HorizontalGap="16"
+                         VerticalAlignment="VerticalAlignment.Center">
+                <FluentLabel Typo="Typography.Body">Items: <strong>@orderLines.Count</strong></FluentLabel>
+                <FluentLabel Typo="Typography.Subject">
+                    Total: <strong>@GrandTotal.ToString("N2")</strong>
+                </FluentLabel>
+            </FluentStack>
+        </FluentCard>
+    </div>
+
+    @* ====== FOOTER: Submit ====== *@
+    <div style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 0;">
+        <FluentButton Appearance="Appearance.Neutral" @onclick="Cancel">Cancel</FluentButton>
+        <FluentButton Appearance="Appearance.Accent"
+                      IconStart="@(new Icons.Regular.Size16.Save())"
+                      Disabled="@(!CanSubmit)"
+                      @onclick="SubmitOrderAsync">
+            @if (isSaving)
+            {
+                <FluentProgress />
+            }
+            else
+            {
+                <span>Submit Order</span>
+            }
+        </FluentButton>
+    </div>
+
+</FluentLayout>
+
+@code {
+    private const string ApiBaseUrl = "https://localhost:60241/";
+
+    private CustomerDto? selectedCustomer;
+    private List<OrderLineFormModel> orderLines = new();
+    private bool isSaving;
+    private string? message;
+    private MessageIntent messageIntent = MessageIntent.Info;
+
+    private decimal GrandTotal => orderLines.Sum(l => l.LineTotal);
+    private bool CanSubmit => selectedCustomer is not null && orderLines.Count > 0 && !isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User?.Identity?.IsAuthenticated != true)
+        {
+            Navigation.NavigateTo("/login", true);
+        }
+    }
+
+    private async Task OpenCustomerSearchAsync()
+    {
+        var dialog = await DialogService.ShowDialogAsync<CustomerSearchDialog>(
+            selectedCustomer,
+            new DialogParameters
+            {
+                Title = "Search Customer",
+                Width = "700px",
+                Height = "550px",
+                PreventDismissOnOverlayClick = true
+            });
+
+        var result = await dialog.Result;
+        if (!result.Cancelled && result.Data is CustomerDto customer)
+        {
+            selectedCustomer = customer;
+            message = null;
+        }
+    }
+
+    private async Task OpenProductSearchAsync()
+    {
+        var dialog = await DialogService.ShowDialogAsync<ProductSearchDialog>(
+            (ProductDto?)null,
+            new DialogParameters
+            {
+                Title = "Search Product",
+                Width = "750px",
+                Height = "550px",
+                PreventDismissOnOverlayClick = true
+            });
+
+        var result = await dialog.Result;
+        if (!result.Cancelled && result.Data is ProductDto product)
+        {
+            var existing = orderLines.FirstOrDefault(l => l.ProductId == product.ProductId);
+            if (existing is not null)
+            {
+                existing.Quantity++;
+            }
+            else
+            {
+                orderLines.Add(new OrderLineFormModel
+                {
+                    ProductId = product.ProductId,
+                    ProductName = product.Name,
+                    ProductNumber = product.ProductNumber,
+                    UnitPrice = product.ListPrice,
+                    Quantity = 1
+                });
+            }
+            message = null;
+        }
+    }
+
+    private void OnQuantityChanged(OrderLineFormModel line, int newQty)
+    {
+        line.Quantity = newQty < 1 ? 1 : newQty;
+    }
+
+    private void RemoveOrderLine(OrderLineFormModel line)
+    {
+        orderLines.Remove(line);
+    }
+
+    private async Task SubmitOrderAsync()
+    {
+        if (!CanSubmit) return;
+
+        isSaving = true;
+        message = null;
+
+        try
+        {
+            var request = new CreateOrderRequest
+            {
+                CustomerId = selectedCustomer!.CustomerId,
+                OrderDate = DateTime.UtcNow,
+                TotalAmount = GrandTotal,
+                OrderLines = orderLines.Select(l => new CreateOrderLineRequest
+                {
+                    ProductId = l.ProductId,
+                    Quantity = l.Quantity,
+                    UnitPrice = l.UnitPrice
+                }).ToList()
+            };
+
+            var response = await Http.PostAsJsonAsync($"{ApiBaseUrl}orders", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ShowMessage("Order created successfully!", MessageIntent.Success);
+                selectedCustomer = null;
+                orderLines.Clear();
+            }
+            else
+            {
+                var body = await response.Content.ReadAsStringAsync();
+                Logger.LogError("Create order failed: {Status} {Body}", response.StatusCode, body);
+                ShowMessage($"Failed to create order. ({response.StatusCode})", MessageIntent.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating order");
+            ShowMessage("An unexpected error occurred.", MessageIntent.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/home");
+    }
+
+    private void ShowMessage(string text, MessageIntent intent)
+    {
+        message = text;
+        messageIntent = intent;
+    }
+}

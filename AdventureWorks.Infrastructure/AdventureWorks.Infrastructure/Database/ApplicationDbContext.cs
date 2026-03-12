@@ -2,9 +2,11 @@
 using AdventureWorks.Domain.Products;
 using AdventureWorks.Domain.Todos;
 using AdventureWorks.Domain.Users;
+using AdventureWorks.Domain.Customers;
 using AdventureWorks.Infrastructure.DomainEvents;
 using AdventureWorks.SharedKernel;
 using Microsoft.EntityFrameworkCore;
+using AdventureWorks.Domain.Orders;
 
 namespace AdventureWorks.Infrastructure.Database;
 
@@ -18,6 +20,12 @@ public sealed class ApplicationDbContext(
     public DbSet<TodoItem> TodoItems { get; set; }
 
     public DbSet<Product> Products { get; set; }
+
+    public DbSet<Customer> Customers { get; set; }
+
+    public DbSet<Order> Orders { get; set; }
+
+    public DbSet<OrderLine> OrderLines { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

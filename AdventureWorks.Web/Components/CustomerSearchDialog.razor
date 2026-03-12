@@ -1,0 +1,105 @@
+@using AdventureWorks.Web.Models
+@inject HttpClient Http
+@inject ILogger<CustomerSearchDialog> Logger
+@implements IDialogContentComponent<CustomerDto?>
+
+<FluentDialogHeader ShowDismiss="true">
+    <FluentStack VerticalAlignment="VerticalAlignment.Center">
+        <FluentIcon Value="@(new Icons.Regular.Size24.PeopleSearch())" />
+        <FluentLabel Typo="Typography.PaneHeader">Search Customer</FluentLabel>
+    </FluentStack>
+</FluentDialogHeader>
+
+<FluentDialogBody>
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+        <FluentSearch Placeholder="Type customer name..."
+                      @bind-Value="searchTerm"
+                      @bind-Value:after="SearchAsync"
+                      Style="width: 100%;" />
+
+        @if (isLoading)
+        {
+            <FluentProgress />
+        }
+        else if (customers.Count == 0 && hasSearched)
+        {
+            <FluentLabel>No customers found.</FluentLabel>
+        }
+        else
+        {
+            <div style="max-height: 400px; overflow-y: auto; width: 100%;">
+                <FluentDataGrid Items="@customers.AsQueryable()" TItem="CustomerDto" Style="width: 100%;">
+                    <PropertyColumn Property="@(c => c.CustomerId)" Title="ID" Width="60px" />
+                    <PropertyColumn Property="@(c => c.CustomerName)" Title="Customer Name" />
+                    <PropertyColumn Property="@(c => c.ContactName)" Title="Contact" />
+                    <PropertyColumn Property="@(c => c.PhoneNumber)" Title="Phone" />
+                    <TemplateColumn Title="" Width="80px">
+                        <FluentButton Appearance="Appearance.Accent"
+                                      Size="ButtonSize.Small"
+                                      @onclick="() => SelectCustomer(context)">
+                            Select
+                        </FluentButton>
+                    </TemplateColumn>
+                </FluentDataGrid>
+            </div>
+        }
+    </FluentStack>
+</FluentDialogBody>
+
+<FluentDialogFooter>
+    <FluentButton Appearance="Appearance.Neutral" @onclick="CancelAsync">Cancel</FluentButton>
+</FluentDialogFooter>
+
+@code {
+    private const string ApiBaseUrl = "https://localhost:60241/";
+
+    [Parameter]
+    public CustomerDto? Content { get; set; }
+
+    [CascadingParameter]
+    public FluentDialog Dialog { get; set; } = default!;
+
+    private string searchTerm = string.Empty;
+    private List<CustomerDto> customers = new();
+    private bool isLoading;
+    private bool hasSearched;
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            customers.Clear();
+            hasSearched = false;
+            return;
+        }
+
+        isLoading = true;
+        hasSearched = true;
+
+        try
+        {
+            var url = $"{ApiBaseUrl}customers?page=1&pageSize=20&searchTerm={Uri.EscapeDataString(searchTerm)}";
+            var response = await Http.GetFromJsonAsync<PagedResponse<CustomerDto>>(url);
+            customers = response?.Items ?? new();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to search customers");
+            customers.Clear();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SelectCustomer(CustomerDto customer)
+    {
+        await Dialog.CloseAsync(customer);
+    }
+
+    private async Task CancelAsync()
+    {
+        await Dialog.CancelAsync();
+    }
+}
