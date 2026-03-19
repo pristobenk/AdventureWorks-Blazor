@@ -1,9 +1,11 @@
 ﻿using AdventureWorks.Application.Abstractions.Authentication;
 using AdventureWorks.Application.Abstractions.Data;
+using AdventureWorks.Application.Abstractions.Email;
 using AdventureWorks.Infrastructure.Authentication;
 using AdventureWorks.Infrastructure.Authorization;
 using AdventureWorks.Infrastructure.Database;
 using AdventureWorks.Infrastructure.DomainEvents;
+using AdventureWorks.Infrastructure.Email;
 using AdventureWorks.Infrastructure.Time;
 using AdventureWorks.SharedKernel;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -26,6 +28,7 @@ public static class DependencyInjection
             .AddServices()
             .AddDatabase(configuration)
             .AddHealthChecks(configuration)
+            .AddEmail(configuration)
             .AddCorsPolicies(configuration) 
             .AddAuthenticationInternal(configuration)
             .AddAuthorizationInternal();
@@ -35,6 +38,14 @@ public static class DependencyInjection
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
         services.AddTransient<IDomainEventsDispatcher, DomainEventsDispatcher>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddEmail(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<SmtpSettings>(configuration.GetSection("Smtp"));
+        services.AddTransient<IEmailSender, SmtpEmailSender>();
 
         return services;
     }

@@ -107,8 +107,12 @@
             <FluentDivider Style="margin: 12px 0;" />
 
             <div style="flex: 1; overflow-y: auto;">
-                <FluentDataGrid Items="@orderLines.AsQueryable()" TItem="OrderLineFormModel" Style="width: 100%;">
-                    <PropertyColumn Property="@(l => l.ProductId)" Title="Product ID" Width="100px" />
+                <FluentDataGrid Items="@orderLines.AsQueryable()" 
+                    TItem="OrderLineFormModel" 
+                    Style="width: 100%;" 
+                    ResizeColumnOnAllRows=true
+                    >
+                    <PropertyColumn  Property="@(l => l.ProductId)" Title="Product ID" Width="100px" />
                     <PropertyColumn Property="@(l => l.ProductNumber)" Title="Product #" />
                     <PropertyColumn Property="@(l => l.ProductName)" Title="Product Name" />
                     <TemplateColumn Title="Unit Price" Align="Align.End" Width="130px">
