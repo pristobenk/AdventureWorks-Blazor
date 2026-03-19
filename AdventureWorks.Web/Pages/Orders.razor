@@ -48,8 +48,11 @@
             </TemplateColumn>
             <TemplateColumn Title="Actions" Align="Align.End">
                 <div style="display:flex; gap:6px; justify-content:flex-end;">
-                    <FluentButton Appearance="Appearance.Neutral" @onclick="() => ViewDetails(context.OrderId)">
-                        View
+                    <FluentButton Appearance="Appearance.Neutral" @onclick="() => EditOrder(context.OrderId)">
+                        Edit
+                    </FluentButton>
+                    <FluentButton Appearance="Appearance.Neutral" @onclick="() => DownloadInvoice(context.OrderId)">
+                        Download Invoice
                     </FluentButton>
                     <FluentButton Appearance="Appearance.Stealth" @onclick="() => DeleteAsync(context.OrderId)">
                         Delete
@@ -148,9 +151,38 @@
         }
     }
 
-    private void ViewDetails(int orderId)
+    private void EditOrder(int orderId)
     {
-        Navigation.NavigateTo($"/orders/{orderId}");
+        Navigation.NavigateTo($"/orders/edit/{orderId}");
+    }
+
+    private async Task DownloadInvoice(int orderId)
+    {
+        try
+        {
+            var url = $"{ApiBaseUrl}orders/{orderId}/invoice/pdf";
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login", true);
+                return;
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var base64 = Convert.ToBase64String(bytes);
+            var objectUrl = await JS.InvokeAsync<string>("createObjectUrlFromBase64", base64, "application/pdf");
+            Navigation.NavigateTo(objectUrl, true);
+            _ = Task.Delay(5000).ContinueWith(_ => JS.InvokeVoidAsync("revokeObjectUrl", objectUrl));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to download invoice {OrderId}", orderId);
+            ShowMessage("Failed to download invoice.", MessageIntent.Error);
+        }
     }
 
     private async Task RefreshAsync()

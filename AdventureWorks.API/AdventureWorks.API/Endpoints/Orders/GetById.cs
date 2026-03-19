@@ -1,6 +1,5 @@
 using AdventureWorks.Application.Abstractions.Messaging;
 using AdventureWorks.Application.Orders.GetById;
-using AdventureWorks.SharedKernel;
 using AdventureWorks.WebApi.Extensions;
 using AdventureWorks.WebApi.Infrastructure;
 

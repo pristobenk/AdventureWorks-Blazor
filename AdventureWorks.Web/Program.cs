@@ -14,6 +14,8 @@ builder.Services.AddFluentUIComponents();
 // make Microsoft FluentUI DialogService injectable
 builder.Services.AddScoped<IDialogService,DialogService>();
 
+builder.Services.AddBlazorPdfViewer();
+
 // Authentication/authorization for client-side
 builder.Services.AddOptions();
 builder.Services.AddAuthorizationCore();
